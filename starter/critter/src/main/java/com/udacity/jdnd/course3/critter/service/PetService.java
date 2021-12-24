@@ -1,12 +1,14 @@
 package com.udacity.jdnd.course3.critter.service;
 
 import com.udacity.jdnd.course3.critter.dto.PetDTO;
+import com.udacity.jdnd.course3.critter.exception.NoDataFoundException;
 import com.udacity.jdnd.course3.critter.model.Customer;
 import com.udacity.jdnd.course3.critter.model.Pet;
 import com.udacity.jdnd.course3.critter.repository.CustomerRepository;
 import com.udacity.jdnd.course3.critter.repository.PetRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +21,7 @@ public class PetService {
     private CustomerRepository customerRepository;
     private PetRepository petRepository;
 
-    public PetDTO savePet(PetDTO petDTO) {
+    public Pet savePet(PetDTO petDTO) {
         Customer customer = customerRepository.findById(petDTO.getOwnerId()).get();
         List<Pet> petList = new ArrayList<>();
         Pet pet = new Pet();
@@ -32,22 +34,20 @@ public class PetService {
         petList.add(pet);
         customer.setPets(petList);
         customerRepository.save(customer);
-        return changetPetToPetDTO(pet);
+        return pet;
     }
 
-    public PetDTO getPet(long petId){
-            return changetPetToPetDTO(petRepository.getOne(petId));
+    public Pet getPet(long petId){
+        return petRepository.findById(petId).orElseThrow(() -> new NoDataFoundException(petId));
     }
 
-    public List<PetDTO> getPets(){
-      return petRepository.findAll().stream().map(this::changetPetToPetDTO).collect(Collectors.toList());
+    public List<Pet> getPets(){
+      return petRepository.findAll();
     }
 
-    public List<PetDTO> getPetsByOwner(long ownerId){
-        return petRepository.findPetByCustomerId(ownerId).stream().map(this::changetPetToPetDTO).collect(Collectors.toList());
+    public List<Pet> getPetsByOwner(long ownerId){
+        return petRepository.findPetByCustomerId(ownerId);
     }
 
-    private PetDTO changetPetToPetDTO(Pet pet) {
-        return new PetDTO(pet.getId(), pet.getType(), pet.getName(), pet.getCustomer().getId(), pet.getBirthDate(), pet.getNotes());
-    }
+
 }

@@ -1,11 +1,13 @@
 package com.udacity.jdnd.course3.critter.controller;
 
 import com.udacity.jdnd.course3.critter.dto.PetDTO;
+import com.udacity.jdnd.course3.critter.model.Pet;
 import com.udacity.jdnd.course3.critter.service.PetService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Handles web requests related to Pets.
@@ -19,24 +21,25 @@ public class PetController {
 
     @PostMapping
     public PetDTO savePet(@RequestBody PetDTO petDTO){
-        return petService.savePet(petDTO);
+        return changetPetToPetDTO(petService.savePet(petDTO));
     }
 
     @GetMapping("/{petId}")
     public PetDTO getPet(@PathVariable long petId) {
-
-        return petService.getPet(petId);
+        return  changetPetToPetDTO(petService.getPet(petId));
     }
 
     @GetMapping
     public List<PetDTO> getPets(){
-
-        return petService.getPets();
+        return petService.getPets().stream().map(this::changetPetToPetDTO).collect(Collectors.toList());
     }
 
     @GetMapping("/owner/{ownerId}")
     public List<PetDTO> getPetsByOwner(@PathVariable long ownerId) {
+        return petService.getPetsByOwner(ownerId).stream().map(this::changetPetToPetDTO).collect(Collectors.toList());
+    }
 
-        return petService.getPetsByOwner(ownerId);
+    private PetDTO changetPetToPetDTO(Pet pet) {
+        return new PetDTO(pet.getId(), pet.getType(), pet.getName(), pet.getCustomer().getId(), pet.getBirthDate(), pet.getNotes());
     }
 }

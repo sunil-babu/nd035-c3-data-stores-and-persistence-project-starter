@@ -3,6 +3,7 @@ package com.udacity.jdnd.course3.critter.service;
 import com.udacity.jdnd.course3.critter.dto.CustomerDTO;
 import com.udacity.jdnd.course3.critter.dto.EmployeeDTO;
 import com.udacity.jdnd.course3.critter.dto.EmployeeRequestDTO;
+import com.udacity.jdnd.course3.critter.exception.NoDataFoundException;
 import com.udacity.jdnd.course3.critter.model.Customer;
 import com.udacity.jdnd.course3.critter.model.Employee;
 import com.udacity.jdnd.course3.critter.model.Pet;
@@ -11,6 +12,7 @@ import com.udacity.jdnd.course3.critter.repository.EmployeeRepository;
 import com.udacity.jdnd.course3.critter.repository.PetRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.util.List;
@@ -25,7 +27,7 @@ public class UserService {
     private CustomerRepository customerRepository;
     private EmployeeRepository employeeRepository;
 
-    public CustomerDTO saveCustomer(CustomerDTO customerDTO){
+    public Customer saveCustomer(CustomerDTO customerDTO){
         Customer customer = new Customer();
         customer.setName(customerDTO.getName());
         customer.setPhoneNumber(customerDTO.getPhoneNumber());
@@ -33,31 +35,30 @@ public class UserService {
         if(customerDTO.getPetIds()!=null) {
             customer.setPets(customerDTO.getPetIds().stream().map((petId) -> petRepository.getOne(petId)).collect(Collectors.toList()));
         }
-        customer = customerRepository.save(customer);
-        return changeCustomerToCustomerDTO(customer);
+        return customerRepository.save(customer);
     }
 
-    public List<CustomerDTO> getAllCustomers(){
-        return customerRepository.findAll().stream().map(this::changeCustomerToCustomerDTO).collect(Collectors.toList());
+    public List<Customer> getAllCustomers(){
+        return customerRepository.findAll();
 
     }
 
-    public CustomerDTO getOwnerByPet(long petId){
-       return changeCustomerToCustomerDTO(petRepository.getOne(petId).getCustomer());
+    public Customer getOwnerByPet(long petId){
+       return petRepository.getOne(petId).getCustomer();
     }
 
 
-    public EmployeeDTO saveEmployee(EmployeeDTO employeeDTO) {
+    public Employee saveEmployee(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
         employee.setName(employeeDTO.getName());
         employee.setSkills(employeeDTO.getSkills());
         employee.setDaysAvailable(employeeDTO.getDaysAvailable());
         employee = employeeRepository.save(employee);
-        return changetEmployeeToEmployeeDTO(employee);
+        return employee;
     }
 
-    public EmployeeDTO getEmployee(long employeeId) {
-        return changetEmployeeToEmployeeDTO(employeeRepository.getOne(employeeId));
+    public Employee getEmployee(long employeeId) {
+        return employeeRepository.findById(employeeId).orElseThrow(() -> new NoDataFoundException(employeeId));
     }
 
     public void setAvailability(Set<DayOfWeek> daysAvailable, long employeeId) {
@@ -65,22 +66,16 @@ public class UserService {
         employee.setDaysAvailable(daysAvailable);
     }
 
-    public List<EmployeeDTO> findEmployeesForService(EmployeeRequestDTO employeeDTO) {
+    public List<Employee> findEmployeesForService(EmployeeRequestDTO employeeDTO) {
         List<Employee> employees = employeeRepository.findAllByDaysAvailable(employeeDTO.getDate().getDayOfWeek());
-        employees.removeIf(employee -> !employee.getSkills().containsAll(employeeDTO.getSkills()));
-        return employees.stream().map(this::changetEmployeeToEmployeeDTO).collect(Collectors.toList());
+        for (Employee employee : employees) {
+            if (!employee.getSkills().containsAll(employeeDTO.getSkills())) {
+                employees.remove(employee);
+            }
+        }
+        return employees;
     }
 
 
-    private CustomerDTO changeCustomerToCustomerDTO(Customer customer) {
-        if(customer.getPets() != null)
-            return new CustomerDTO(customer.getId(),  customer.getName(), customer.getPhoneNumber(), customer.getNotes(),customer.getPets().stream().map(Pet::getId).collect(Collectors.toList()));
-        else
-            return new CustomerDTO(customer.getId(),  customer.getName(), customer.getPhoneNumber(), customer.getNotes(),null);
 
-    }
-
-    private EmployeeDTO changetEmployeeToEmployeeDTO(Employee employee) {
-        return new EmployeeDTO(employee.getId(),  employee.getName(),employee.getSkills(),employee.getDaysAvailable());
-    }
 }
